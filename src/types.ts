@@ -29,3 +29,11 @@ export interface UserInput {
   username: string;
   password: string;
 }
+
+export interface DBConfig {
+  host: string;
+  port: number;
+  database: string;
+  user: string;
+  password: string;
+}

@@ -1,70 +1,68 @@
-import argon2 from "argon2";
-import { User } from "../types";
+import { Pool, QueryResult } from "pg";
+import UserEntity from "../entities/UserEntity";
+import { DBConfig } from "../types";
 
 export default class DB {
-  database: { [id: string]: User };
+  database: Pool;
 
-  constructor(database: { [id: string]: User }) {
-    this.database = database;
+  constructor(config: DBConfig) {
+    this.database = new Pool(config);
   }
 
-  findOne(id: string): User | null {
-    const userIds = Object.keys(this.database).filter((_id) => _id === id);
-    if (userIds.length === 0) {
-      return null;
-    }
-    const userId = userIds[0];
-    return this.database[userId];
+  async runQuery(
+    query: string,
+    values: (string | Date)[]
+  ): Promise<QueryResult<UserEntity>> {
+    const start = Date.now();
+    const result = await this.database.query(query, values);
+    const duration = Date.now() - start;
+    console.log(`Query ${query} executed in ${duration / 1000}s.`);
+    return result;
   }
 
-  findAll(): User[] {
-    return Object.keys(this.database).map((id) => this.database[id]);
+  findOne(
+    table: string,
+    conditions: { [id: string]: string | Date }
+  ): Promise<QueryResult<UserEntity>> {
+    const query = `SELECT * FROM ${table} WHERE ${Object.keys(conditions)
+      .map((condition, id) => `${condition}=$${id + 1}`)
+      .join(" AND ")}`;
+    const values = Object.values(conditions);
+    return this.runQuery(query, values);
   }
 
-  async insert(input: {
-    username: string;
-    password: string;
-  }): Promise<User | null> {
-    const { username, password } = input;
-    const isValid =
-      Object.values(this.database).filter((user) => user.username === username)
-        .length === 0;
-    if (!isValid) {
-      return null;
-    }
-    const newId = (Object.keys(this.database).length + 1).toString();
-    const hashedPassword = await argon2.hash(password);
-    const user = new User({
-      id: newId,
-      username,
-      password: hashedPassword,
-      createdAt: new Date(),
-      lastLogin: new Date(),
-    });
-    this.database[newId] = user;
-
-    return user;
+  findAll(table: string): Promise<QueryResult<UserEntity>> {
+    const query = `SELECT * FROM ${table}`;
+    return this.runQuery(query, []);
   }
 
-  async update(input: {
-    username: string;
-    password: string;
-  }): Promise<User | null> {
-    const { username, password } = input;
-    const userIds = Object.keys(this.database).filter(
-      (id) => this.database[id].username === username
-    );
-    if (userIds.length === 0) {
-      return null;
-    }
-    const user = this.database[userIds[0]];
+  insert(
+    table: string,
+    newObj: { [id: string]: string | Date }
+  ): Promise<QueryResult<UserEntity>> {
+    const query = `INSERT INTO ${table}(${Object.keys(newObj).join(
+      ", "
+    )}) VALUES (${Object.keys(newObj)
+      .map((_, id) => `$${id + 1}`)
+      .join(", ")}) RETURNING *`;
+    const values = Object.values(newObj);
+    return this.runQuery(query, values);
+  }
 
-    const isPasswordValid = await argon2.verify(user.password, password);
-    if (!isPasswordValid) {
-      return null;
-    }
-
-    user.lastLogin = new Date();
-    return user;
+  update(
+    table: string,
+    newObj: { [id: string]: string | Date },
+    conditions: { [id: string]: string | Date }
+  ): Promise<QueryResult<UserEntity>> {
+    const query = `UPDATE ${table} SET ${Object.entries(newObj)
+      .map((entry, id) => `${entry[0]}=$${id + 1}`)
+      .join(", ")} WHERE ${Object.keys(conditions)
+      .map(
+        (condition, id) =>
+          `${condition}=$${Object.values(newObj).length + id + 1}`
+      )
+      .join(" AND ")}`;
+    const values = [...Object.values(newObj), ...Object.values(conditions)];
+    return this.runQuery(query, values);
   }
 }
