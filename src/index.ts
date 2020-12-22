@@ -7,7 +7,6 @@ import session from "express-session";
 import connectRedis from "connect-redis";
 import DB from "./db";
 import schema from "./schema";
-import { rootValue } from "./resolvers";
 
 dotenv.config({
   path: path.join(__dirname, "../.env"),
@@ -68,7 +67,6 @@ const main = async (): Promise<void> => {
     "/graphql",
     graphqlHTTP((req, res) => ({
       schema,
-      rootValue,
       graphiql: true,
       context: { db, req, res },
     }))

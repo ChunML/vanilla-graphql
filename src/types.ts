@@ -28,7 +28,7 @@ export interface MyContext {
   req: Request & {
     session: Session & Partial<SessionData> & { userId?: string };
   };
-  response: Response;
+  res: Response;
 }
 
 export interface UserInput {
