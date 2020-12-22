@@ -1,3 +1,5 @@
+import { Request, Response } from "express";
+import { Session, SessionData } from "express-session";
 import DB from "./db";
 
 // eslint-disable-next-line import/prefer-default-export
@@ -23,6 +25,10 @@ export class User {
 
 export interface MyContext {
   db: DB;
+  req: Request & {
+    session: Session & Partial<SessionData> & { userId?: string };
+  };
+  response: Response;
 }
 
 export interface UserInput {

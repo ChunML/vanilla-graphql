@@ -1,11 +1,6 @@
 import { buildSchema } from "graphql";
 
 const schema = buildSchema(`
-  input UsernamePasswordInput {
-    username: String
-    password: String
-  }
-
   type User {
     id: ID!
     username: String
@@ -16,7 +11,7 @@ const schema = buildSchema(`
   }
 
   type Query {
-    getUser(id: ID!): User
+    getUser: User
     getUsers: [User]
     hello: String
   }
@@ -24,6 +19,7 @@ const schema = buildSchema(`
   type Mutation {
     register(username: String, password: String): User
     login(username: String, password: String): User
+    changeRole(username: String, isAdmin: Boolean): Boolean
   }
 `);
 

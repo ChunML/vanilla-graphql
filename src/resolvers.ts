@@ -3,11 +3,14 @@ import { MyContext, User, UserInput } from "./types";
 
 // eslint-disable-next-line import/prefer-default-export
 export const rootValue = {
-  getUser: async (
-    { id }: { id: string },
-    context: MyContext
-  ): Promise<User | null> => {
-    const result = await context.db.findOne("users", { id });
+  getUser: async (_args: null, context: MyContext): Promise<User | null> => {
+    if (!context.req.session.userId) {
+      return null;
+    }
+
+    const result = await context.db.findOne("users", {
+      id: context.req.session.userId,
+    });
     if (result.rowCount === 0) {
       return null;
     }
@@ -20,19 +23,31 @@ export const rootValue = {
     });
     return user;
   },
-  getUsers: async (_args: null, context: MyContext): Promise<User[]> => {
+  getUsers: async (_args: null, context: MyContext): Promise<User[] | null> => {
+    if (!context.req.session.userId) {
+      return null;
+    }
+
     const result = await context.db.findAll("users");
 
-    return result.rows.map(
-      (row) =>
-        new User({
-          id: row.id,
-          username: row.username,
-          password: row.password,
-          createdAt: row.created_at,
-          lastLogin: row.last_login,
-        })
-    );
+    const isAdmin = result.rows.filter(
+      (row) => row.id === context.req.session.userId
+    )[0].is_admin;
+
+    if (isAdmin) {
+      return result.rows.map(
+        (row) =>
+          new User({
+            id: row.id,
+            username: row.username,
+            password: row.password,
+            createdAt: row.created_at,
+            lastLogin: row.last_login,
+          })
+      );
+    }
+
+    return null;
   },
   login: async (input: UserInput, context: MyContext): Promise<User | null> => {
     const { username, password } = input;
@@ -63,9 +78,15 @@ export const rootValue = {
       { last_login: user.lastLogin },
       { username }
     );
+
+    context.req.session.userId = user.id;
+
     return user;
   },
-  async register(input: UserInput, context: MyContext): Promise<User | null> {
+  register: async (
+    input: UserInput,
+    context: MyContext
+  ): Promise<User | null> => {
     const { username, password } = input;
     const usersWithThatUsername = await context.db.findOne("users", {
       username,
@@ -91,6 +112,32 @@ export const rootValue = {
       lastLogin: row.last_login,
     });
 
+    context.req.session.userId = user.id;
+
     return user;
+  },
+  changeRole: async (
+    args: { username: string; isAdmin: boolean },
+    context: MyContext
+  ): Promise<boolean> => {
+    if (!context.req.session.userId) {
+      return false;
+    }
+
+    const result = await context.db.findOne("users", {
+      id: context.req.session.userId,
+    });
+
+    if (result.rowCount === 0 || !result.rows[0].is_admin) {
+      return false;
+    }
+
+    await context.db.update(
+      "users",
+      { is_admin: args.isAdmin },
+      { username: args.username }
+    );
+
+    return true;
   },
 };

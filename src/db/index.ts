@@ -11,7 +11,7 @@ export default class DB {
 
   async runQuery(
     query: string,
-    values: (string | Date)[]
+    values: (string | Date | boolean)[]
   ): Promise<QueryResult<UserEntity>> {
     const start = Date.now();
     const result = await this.database.query(query, values);
@@ -51,7 +51,7 @@ export default class DB {
 
   update(
     table: string,
-    newObj: { [id: string]: string | Date },
+    newObj: { [id: string]: string | Date | boolean },
     conditions: { [id: string]: string | Date }
   ): Promise<QueryResult<UserEntity>> {
     const query = `UPDATE ${table} SET ${Object.entries(newObj)

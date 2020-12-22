@@ -13,6 +13,13 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
 
+  cache:
+    image: redis:6.0-alpine
+    depends_on:
+      - db
+    ports:
+      - 6380:6379
+
   adminer:
     image: adminer
     depends_on:

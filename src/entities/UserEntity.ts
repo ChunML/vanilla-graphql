@@ -9,4 +9,6 @@ export default class UserEntity {
   created_at: Date;
 
   last_login: Date;
+
+  is_admin: boolean;
 }
